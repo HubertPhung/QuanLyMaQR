@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/qr_background"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="36dp">
+
+        <!-- HEADER SECTION -->
+        <LinearLayout
+            android:id="@+id/headerLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnSettings">
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Quét mã QR"
+                android:textColor="@color/qr_foreground"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/tvSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Đưa mã vào khung để quét"
+                android:textColor="@color/qr_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Top Right Share Button -->
+        <FrameLayout
+            android:id="@+id/btnSettings"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_circle_button"
+            app:layout_constraintTop_toTopOf="@id/headerLayout"
+            app:layout_constraintBottom_toBottomOf="@id/headerLayout"
+            app:layout_constraintEnd_toEndOf="parent">
+            <ImageView
+                android:layout_width="19dp"
+                android:layout_height="19dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_share_node"
+                app:tint="@color/qr_muted" />
+        </FrameLayout>
+
+        <!-- SCANNER FRAME SECTION -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/scannerFrame"
+            android:layout_width="290dp"
+            android:layout_height="290dp"
+            android:layout_marginTop="28dp"
+            app:cardBackgroundColor="@color/qr_card"
+            app:cardCornerRadius="36dp"
+            app:cardElevation="0dp"
+            app:cardPreventCornerOverlap="false"
+            app:layout_constraintTop_toBottomOf="@id/headerLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Real CameraX Preview -->
+                <androidx.camera.view.PreviewView
+                    android:id="@+id/viewFinder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Grid & Neon Mint Corner Overlay -->
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/ic_scanner_overlay" />
+
+                <!-- Moving Laser Line -->
+                <View
+                    android:id="@+id/scanLine"
+                    android:layout_width="match_parent"
+                    android:layout_height="2.5dp"
+                    android:layout_marginHorizontal="24dp"
+                    android:background="@color/qr_mint" />
+            </FrameLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- FLOATING STATUS PILL ("⚡ Đang quét...") -->
+        <LinearLayout
+            android:id="@+id/statusPill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:paddingEnd="18dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:elevation="6dp"
+            android:background="@drawable/bg_status_pill"
+            app:layout_constraintTop_toBottomOf="@id/scannerFrame"
+            app:layout_constraintBottom_toBottomOf="@id/scannerFrame"
+            app:layout_constraintStart_toStartOf="@id/scannerFrame"
+            app:layout_constraintEnd_toEndOf="@id/scannerFrame">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_bolt" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Đang quét…"
+                android:textColor="@color/qr_foreground"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- INSTRUCTION TEXT -->
+        <TextView
+            android:id="@+id/tvInstruction"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Giữ điện thoại ổn định và căn mã\nQR nằm gọn trong khung viền."
+            android:textColor="@color/qr_muted"
+            android:textSize="13sp"
+            android:lineSpacingExtra="3dp"
+            android:gravity="center"
+            app:layout_constraintTop_toBottomOf="@id/scannerFrame"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- "CHỌN TỪ THƯ VIỆN" ACTION BUTTON -->
+        <LinearLayout
+            android:id="@+id/btnGallery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="22dp"
+            android:paddingStart="22dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="11dp"
+            android:paddingBottom="11dp"
+            android:background="@drawable/bg_pill_button"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toBottomOf="@id/tvInstruction"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_gallery_image" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Chọn từ thư viện"
+                android:textColor="@color/qr_foreground"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- LỊCH SỬ QUÉT HEADER -->
+        <TextView
+            android:id="@+id/tvHistoryHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Lịch sử quét"
+            android:textColor="@color/qr_foreground"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/btnGallery"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <!-- "XEM TẤT CẢ" ACTION -->
+        <TextView
+            android:id="@+id/btnViewAll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="4dp"
+            android:text="Xem tất cả"
+            android:textColor="@color/qr_mint"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintBaseline_toBaselineOf="@id/tvHistoryHeader"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/tvScanEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:padding="18dp"
+            android:gravity="center"
+            android:text="Chưa có mã nào được quét."
+            android:textColor="@color/qr_muted"
+            android:textSize="13sp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/tvHistoryHeader" />
+
+        <!-- RECYCLERVIEW LỊCH SỬ QUÉT -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:nestedScrollingEnabled="false"
+            app:layout_constraintTop_toBottomOf="@id/tvHistoryHeader" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.core.widget.NestedScrollView>

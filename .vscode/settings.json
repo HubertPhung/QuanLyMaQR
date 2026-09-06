@@ -1,0 +1,11 @@
+{
+    "files.watcherExclude": {
+        "**/build/**": true,
+        "**/.dart_tool/**": true,
+        "**/intermediates/**": true
+    },
+    "java.import.exclusions": [
+        "**/build/**",
+        "**/intermediates/**"
+    ]
+}

@@ -1,0 +1,125 @@
+# ==============================================================================
+# Git Ignore - Demo App Workspace (Android Native, Flutter & Web)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Hệ điều hành (Operating System Files)
+# ------------------------------------------------------------------------------
+*.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ------------------------------------------------------------------------------
+# IDEs & Trình soạn thảo (VS Code, Android Studio, IntelliJ)
+# ------------------------------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------------------------------------------------------
+# Android Native & Gradle
+# ------------------------------------------------------------------------------
+.gradle/
+build/
+**/build/
+**/build_old*/
+android/build/
+android/app/build/
+
+# SDK & Cấu hình môi trường máy cục bộ
+local.properties
+.cxx/
+**/intermediates/
+**/generated/
+**/outputs/
+**/tmp/
+
+# Android Studio artifacts
+captures/
+.externalNativeBuild/
+.navigation/
+
+# Android Keystore & Ký số (Bảo mật)
+*.keystore
+*.jks
+!debug.keystore
+
+# ------------------------------------------------------------------------------
+# Flutter / Dart
+# ------------------------------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/DerivedData/
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+
+# Ký hiệu gỡ lỗi & Bản đồ obfuscation Flutter
+app.*.symbols
+app.*.map.json
+
+# ------------------------------------------------------------------------------
+# Node.js / Web (qr-scanner-interface / Next.js)
+# ------------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+dist/
+
+# Nhật ký (Logs)
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Biến môi trường (Environment Variables - Bảo mật)
+.env
+.env*.local
+!.env.example
+
+# ------------------------------------------------------------------------------
+# Tệp tạm & Tệp sinh tự động (Temporary & Generated Artifacts)
+# ------------------------------------------------------------------------------
+*.class
+*.pyc
+*.pyo
+*.swp
+*.bak
+*~
+*.tmp
+*.temp
+
+# Tệp cài đặt build cục bộ (APKs, AABs, Archives)
+*.apk
+*.ap_
+*.aab
+*.dex

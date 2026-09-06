@@ -1,0 +1,50 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="280dp"
+    android:height="280dp"
+    android:viewportWidth="280"
+    android:viewportHeight="280">
+
+    <!-- Subtle Grid Background -->
+    <path
+        android:strokeColor="#15364858"
+        android:strokeWidth="1"
+        android:pathData="M 0,35 H 280 M 0,70 H 280 M 0,105 H 280 M 0,140 H 280 M 0,175 H 280 M 0,210 H 280 M 0,245 H 280" />
+    <path
+        android:strokeColor="#15364858"
+        android:strokeWidth="1"
+        android:pathData="M 35,0 V 280 M 70,0 V 280 M 105,0 V 280 M 140,0 V 280 M 175,0 V 280 M 210,0 V 280 M 245,0 V 280" />
+
+    <!-- Center QR Targeting Pattern (Translucent Squares) -->
+    <path
+        android:fillColor="#308A9BB0"
+        android:pathData="M116,116h14v14h-14z M133,116h14v14h-14z M116,133h14v14h-14z M133,133h14v14h-14z M103,103h10v10h-10z M149,103h10v10h-10z M103,149h10v10h-10z M149,149h10v10h-10z" />
+
+    <!-- 4 Rounded Neon Mint Corner Brackets -->
+    <!-- Top Left -->
+    <path
+        android:strokeColor="@color/qr_mint"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 16,56 L 16,36 A 20,20 0 0,1 36,16 L 56,16" />
+
+    <!-- Top Right -->
+    <path
+        android:strokeColor="@color/qr_mint"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 224,16 L 244,16 A 20,20 0 0,1 264,36 L 264,56" />
+
+    <!-- Bottom Left -->
+    <path
+        android:strokeColor="@color/qr_mint"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 16,224 L 16,244 A 20,20 0 0,0 36,264 L 56,264" />
+
+    <!-- Bottom Right -->
+    <path
+        android:strokeColor="@color/qr_mint"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 224,264 L 244,264 A 20,20 0 0,0 264,244 L 264,224" />
+</vector>
