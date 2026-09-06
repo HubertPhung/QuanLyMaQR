@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Lấy mã nguồn
-        uses: actions/checkout@v4 # Đã nâng lên v4
+        uses: actions/checkout@v4
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4 # Đã nâng lên v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -27,17 +27,17 @@ jobs:
 
       - name: Tải thư viện Flutter
         run: flutter pub get
-        working-directory: ./Flutter_App
+        working-directory: ./QR_Project_Workspace/Flutter_App
 
       - name: Build Flutter APK (Release)
         run: flutter build apk --release
-        working-directory: ./Flutter_App
+        working-directory: ./QR_Project_Workspace/Flutter_App
 
       - name: Lưu file Flutter APK
-        uses: actions/upload-artifact@v4 # Đã nâng lên v4
+        uses: actions/upload-artifact@v4
         with:
           name: QR_Flutter_APK
-          path: Flutter_App/build/app/outputs/flutter-apk/app-release.apk
+          path: QR_Project_Workspace/Flutter_App/build/app/outputs/flutter-apk/app-release.apk
 
   # === MÁY ẢO 2: BUILD ANDROID NATIVE ===
   build-android-native:
@@ -45,24 +45,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Lấy mã nguồn
-        uses: actions/checkout@v4 # Đã nâng lên v4
+        uses: actions/checkout@v4
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4 # Đã nâng lên v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Cấp quyền chạy Gradle
         run: chmod +x ./gradlew
-        working-directory: ./Android_Native
+        working-directory: ./QR_Project_Workspace/Android_Native 
 
       - name: Build Android APK (Debug)
         run: ./gradlew assembleDebug
-        working-directory: ./Android_Native
+        working-directory: ./QR_Project_Workspace/Android_Native
 
       - name: Lưu file Android Native APK
-        uses: actions/upload-artifact@v4 # Đã nâng lên v4
+        uses: actions/upload-artifact@v4
         with:
           name: QR_Android_Native_APK
-          path: Android_Native/app/build/outputs/apk/debug/app-debug.apk
+          path: QR_Project_Workspace/Android_Native/app/build/outputs/apk/debug/app-debug.apk
