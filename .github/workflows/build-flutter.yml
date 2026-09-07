@@ -44,7 +44,7 @@ jobs:
           java-version: '17'
       - run: chmod +x ./gradlew
         working-directory: ./QR_Project_Workspace/Android_Native 
-      - run: ./gradlew assembleDebug
+      - run: ./gradlew assembleDebug -Dorg.gradle.java.home="$JAVA_HOME"
         working-directory: ./QR_Project_Workspace/Android_Native
         
       # Đổi tên file cho chuyên nghiệp
