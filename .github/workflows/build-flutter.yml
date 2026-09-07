@@ -1,4 +1,4 @@
-name: Build Mobile APKs (Flutter & Android Native)
+name: Build & Release Mobile APKs
 
 on:
   push:
@@ -11,58 +11,73 @@ jobs:
     name: Build Flutter APK
     runs-on: ubuntu-latest
     steps:
-      - name: Lấy mã nguồn
-        uses: actions/checkout@v4
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-
-      - name: Tải thư viện Flutter
-        run: flutter pub get
+      - run: flutter pub get
         working-directory: ./QR_Project_Workspace/Flutter_App
-
-      - name: Build Flutter APK (Release)
-        run: flutter build apk --release
+      - run: flutter build apk --release
         working-directory: ./QR_Project_Workspace/Flutter_App
-
-      - name: Lưu file Flutter APK
-        uses: actions/upload-artifact@v4
+      
+      # Đổi tên file cho chuyên nghiệp
+      - run: mv ./QR_Project_Workspace/Flutter_App/build/app/outputs/flutter-apk/app-release.apk ./QR_Manager_Flutter.apk
+      
+      - uses: actions/upload-artifact@v4
         with:
-          name: QR_Flutter_APK
-          path: QR_Project_Workspace/Flutter_App/build/app/outputs/flutter-apk/app-release.apk
+          name: Flutter_APK
+          path: ./QR_Manager_Flutter.apk
 
   # === MÁY ẢO 2: BUILD ANDROID NATIVE ===
   build-android-native:
     name: Build Android Native APK
     runs-on: ubuntu-latest
     steps:
-      - name: Lấy mã nguồn
-        uses: actions/checkout@v4
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
-
-      - name: Cấp quyền chạy Gradle
-        run: chmod +x ./gradlew
+      - run: chmod +x ./gradlew
         working-directory: ./QR_Project_Workspace/Android_Native 
-
-      - name: Build Android APK (Debug)
-        run: ./gradlew assembleDebug
+      - run: ./gradlew assembleDebug
         working-directory: ./QR_Project_Workspace/Android_Native
-
-      - name: Lưu file Android Native APK
-        uses: actions/upload-artifact@v4
+        
+      # Đổi tên file cho chuyên nghiệp
+      - run: mv ./QR_Project_Workspace/Android_Native/app/build/outputs/apk/debug/app-debug.apk ./QR_Manager_Android.apk
+      
+      - uses: actions/upload-artifact@v4
         with:
-          name: QR_Android_Native_APK
-          path: QR_Project_Workspace/Android_Native/app/build/outputs/apk/debug/app-debug.apk
+          name: Android_APK
+          path: ./QR_Manager_Android.apk
+
+  # === MÁY ẢO 3: GOM FILE VÀ ĐĂNG LÊN RELEASE ===
+  create-release:
+    name: Xuất bản lên Release
+    needs: [build-flutter, build-android-native] # Yêu cầu chờ 2 máy ảo trên chạy xong
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Quyền tạo Release
+    steps:
+      - name: Tải Flutter APK từ máy ảo 1
+        uses: actions/download-artifact@v4
+        with:
+          name: Flutter_APK
+          
+      - name: Tải Android APK từ máy ảo 2
+        uses: actions/download-artifact@v4
+        with:
+          name: Android_APK
+          
+      - name: Đăng tải lên trang Releases
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "*.apk" # Gom tất cả file có đuôi .apk
+          tag: "Latest"
+          name: "Bản cài đặt mới nhất 🚀"
+          body: "Bấm vào các file **.apk** bên dưới để tải trực tiếp về điện thoại. Bản phát hành này được tự động build và cập nhật từ mã nguồn mới nhất."
+          allowUpdates: true # Tự động xóa file cũ, cập nhật file mới
