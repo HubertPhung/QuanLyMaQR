@@ -93,20 +93,23 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         String type = record.getType() != null ? record.getType().toLowerCase() : "";
 
         try {
-            if (type.equals("url") || content.startsWith("http://") || content.startsWith("https://")) {
+            if (type.equals("url") || content.startsWith("http://") || content.startsWith("https://") || content.contains(".com") || content.contains(".vn")) {
                 String url = content;
                 if (!url.startsWith("http://") && !url.startsWith("https://")) {
                     url = "https://" + url;
                 }
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 ctx.startActivity(intent);
+            } else if (type.equals("wifi") || content.startsWith("WIFI:") || content.startsWith("wifi:")) {
+                WifiHelper.showWifiDialog(ctx, content);
             } else {
                 android.content.ClipboardManager clipboard =
                         (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
                 android.content.ClipData clip = android.content.ClipData.newPlainText("QR", content);
                 if (clipboard != null) {
                     clipboard.setPrimaryClip(clip);
-                    Toast.makeText(ctx, "Đã sao chép nội dung!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ctx, "Đã sao chép: " + content, Toast.LENGTH_SHORT).show();
                 }
             }
         } catch (Exception e) {

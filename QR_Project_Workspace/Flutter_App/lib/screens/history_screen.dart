@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../database/history_notifier.dart';
 import '../database/qr_record.dart';
 import '../theme/app_colors.dart';
+import '../widgets/wifi_helper.dart';
 
 class HistoryScreen extends StatelessWidget {
   final VoidCallback onBack;
@@ -44,6 +47,44 @@ class HistoryScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _handleItemClick(BuildContext context, QrRecord record) async {
+    final t = record.type.toLowerCase();
+    final c = record.content;
+    final cl = c.toLowerCase();
+
+    if (t == 'url' || cl.startsWith('http://') || cl.startsWith('https://') || cl.contains('.com') || cl.contains('.vn')) {
+      String url = c;
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://$url";
+      }
+      try {
+        final uri = Uri.parse(url);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.card,
+              content: Text('Không thể mở: $url', style: const TextStyle(color: AppColors.foreground)),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else if (t == 'wifi' || c.toUpperCase().startsWith('WIFI:')) {
+      WifiHelper.showWifiModal(context, c);
+    } else {
+      Clipboard.setData(ClipboardData(text: c));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.card,
+          content: Text('Đã sao chép: $c', style: const TextStyle(color: AppColors.foreground)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -211,18 +252,19 @@ class HistoryScreen extends StatelessWidget {
     IconData icon;
     String label;
     final t = item.type.toLowerCase();
-    final c = item.content.toLowerCase();
+    final c = item.content;
+    final cl = c.toLowerCase();
 
-    if (t == 'url' || c.startsWith('http') || c.contains('.com')) {
+    if (t == 'url' || cl.startsWith('http') || cl.contains('.com')) {
       icon = Icons.language;
-      label = "Liên kết";
-    } else if (t == 'wifi' || c.startsWith('wifi:')) {
+      label = "Liên kết · Nhấn để mở web";
+    } else if (t == 'wifi' || c.toUpperCase().startsWith('WIFI:')) {
       icon = Icons.wifi;
-      label = "Wi-Fi";
-    } else if (t == 'payment' || c.contains('đ') || c.contains('vnd')) {
+      label = "Wi-Fi · Nhấn để xem & kết nối";
+    } else if (t == 'payment' || cl.contains('đ') || cl.contains('vnd')) {
       icon = Icons.credit_card;
       label = "Thanh toán";
-    } else if (t == 'contact' || c.contains('begin:vcard')) {
+    } else if (t == 'contact' || cl.contains('begin:vcard')) {
       icon = Icons.badge_outlined;
       label = "Danh bạ";
     } else {
@@ -248,74 +290,83 @@ class HistoryScreen extends StatelessWidget {
     } catch (_) {}
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.cardStroke),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.iconBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: AppColors.mint, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _handleItemClick(context, item),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  item.content,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.foreground,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.iconBg,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: AppColors.mint, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.content,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        "$label · $relativeTime",
+                        style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  "$label · $relativeTime",
-                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                const SizedBox(width: 6),
+                // Individual delete button
+                InkWell(
+                  onTap: () {
+                    if (item.id != null) {
+                      HistoryNotifier.instance.deleteItem(item.id!);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: AppColors.card,
+                          content: Text("Đã xóa mục lịch sử", style: TextStyle(color: AppColors.foreground)),
+                          duration: Duration(milliseconds: 1200),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.cardStroke),
+                    ),
+                    child: const Icon(Icons.delete_outline, color: AppColors.mutedForeground, size: 18),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 6),
-          // Individual delete button
-          InkWell(
-            onTap: () {
-              if (item.id != null) {
-                HistoryNotifier.instance.deleteItem(item.id!);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    backgroundColor: AppColors.card,
-                    content: Text("Đã xóa mục lịch sử", style: TextStyle(color: AppColors.foreground)),
-                    duration: Duration(milliseconds: 1200),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.cardStroke),
-              ),
-              child: const Icon(Icons.delete_outline, color: AppColors.mutedForeground, size: 18),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

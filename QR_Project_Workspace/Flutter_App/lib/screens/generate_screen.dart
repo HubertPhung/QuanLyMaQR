@@ -5,6 +5,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../database/history_notifier.dart';
+import '../database/qr_record.dart';
 import '../theme/app_colors.dart';
 
 enum GenerateType { text, url, wifi }
@@ -69,6 +71,19 @@ class _GenerateScreenState extends State<GenerateScreen> {
       await file.writeAsBytes(pngBytes);
 
       setState(() => _isSaved = true);
+
+      String typeStr = "text";
+      if (_selectedType == GenerateType.url) {
+        typeStr = "url";
+      } else if (_selectedType == GenerateType.wifi) {
+        typeStr = "wifi";
+      }
+
+      await HistoryNotifier.instance.addCreatedRecord(QrRecord(
+        content: payload,
+        type: typeStr,
+        timestamp: DateTime.now().toIso8601String(),
+      ));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

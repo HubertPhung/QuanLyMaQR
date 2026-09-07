@@ -17,6 +17,7 @@ public class HistoryRepository {
 
     public interface OnHistoryChangeListener {
         void onHistoryChanged(List<QrRecord> records);
+        default void onStatsChanged(int scannedCount, int createdCount) {}
     }
 
     private static HistoryRepository instance;
@@ -25,6 +26,7 @@ public class HistoryRepository {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private boolean isLoaded = false;
+    private int createdCount = 0;
 
     private HistoryRepository() {}
 
@@ -41,6 +43,7 @@ public class HistoryRepository {
         }
         if (isLoaded) {
             listener.onHistoryChanged(new ArrayList<>(records));
+            listener.onStatsChanged(records.size(), createdCount);
         }
     }
 
@@ -57,22 +60,35 @@ public class HistoryRepository {
                 long now = System.currentTimeMillis();
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
 
-                // Khởi tạo 7 mục lịch sử mẫu ban đầu chuẩn qr-scanner-interface
+                // Khởi tạo 7 mục lịch sử mẫu ban đầu chuẩn giao diện
                 dbHelper.addRecord(new QrRecord(0, "vercel.com/dashboard", "url", sdf.format(new Date(now - 15 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "Coffee_House_5G", "wifi", sdf.format(new Date(now - 2 * 60 * 1000L))));
+                dbHelper.addRecord(new QrRecord(0, "WIFI:T:WPA;S:Coffee_House_5G;P:Coffee@2026;;", "wifi", sdf.format(new Date(now - 2 * 60 * 1000L))));
                 dbHelper.addRecord(new QrRecord(0, "240.000đ", "payment", sdf.format(new Date(now - 18 * 60 * 1000L))));
                 dbHelper.addRecord(new QrRecord(0, "Hoài Bo", "contact", sdf.format(new Date(now - 24 * 3600 * 1000L))));
                 dbHelper.addRecord(new QrRecord(0, "github.com/vercel/next.js", "url", sdf.format(new Date(now - 26 * 3600 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "Home_Network_2.4G", "wifi", sdf.format(new Date(now - 2 * 24 * 3600 * 1000L))));
+                dbHelper.addRecord(new QrRecord(0, "WIFI:T:WPA;S:Home_Network_2.4G;P:Password123;;", "wifi", sdf.format(new Date(now - 2 * 24 * 3600 * 1000L))));
                 dbHelper.addRecord(new QrRecord(0, "89.000đ", "payment", sdf.format(new Date(now - 3 * 24 * 3600 * 1000L))));
 
                 dbRecords = dbHelper.getAllRecords();
             }
 
+            // Kiểm tra và khởi tạo mã tạo mẫu nếu chưa có
+            int cCount = dbHelper.getCreatedCount();
+            if (cCount == 0) {
+                long now = System.currentTimeMillis();
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+                dbHelper.addCreatedRecord(new QrRecord(0, "https://github.com/HubertPhung", "url", sdf.format(new Date(now - 3600 * 1000L))));
+                dbHelper.addCreatedRecord(new QrRecord(0, "WIFI:T:WPA;S:Studio_Guest;P:guest2026;;", "wifi", sdf.format(new Date(now - 7200 * 1000L))));
+                dbHelper.addCreatedRecord(new QrRecord(0, "Demo Project QR 2026", "text", sdf.format(new Date(now - 10800 * 1000L))));
+                cCount = dbHelper.getCreatedCount();
+            }
+
             final List<QrRecord> result = dbRecords;
+            final int finalCreatedCount = cCount;
             mainHandler.post(() -> {
                 records.clear();
                 records.addAll(result);
+                createdCount = finalCreatedCount;
                 isLoaded = true;
                 notifyListeners();
             });
@@ -119,10 +135,25 @@ public class HistoryRepository {
         });
     }
 
+    public void addCreatedRecord(Context context, QrRecord record) {
+        executor.execute(() -> {
+            DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
+            dbHelper.addCreatedRecord(record);
+            int newCount = dbHelper.getCreatedCount();
+            mainHandler.post(() -> {
+                createdCount = newCount;
+                notifyListeners();
+            });
+        });
+    }
+
     private void notifyListeners() {
         List<QrRecord> copy = new ArrayList<>(records);
+        int scanned = copy.size();
+        int created = createdCount;
         for (OnHistoryChangeListener listener : listeners) {
             listener.onHistoryChanged(copy);
+            listener.onStatsChanged(scanned, created);
         }
     }
 
@@ -132,6 +163,14 @@ public class HistoryRepository {
 
     public int getCount() {
         return records.size();
+    }
+
+    public int getScannedCount() {
+        return records.size();
+    }
+
+    public int getCreatedCount() {
+        return createdCount;
     }
 
     public List<QrRecord> getRecent(int limit) {

@@ -72,7 +72,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(onNavigate: _navigateToTab),
-      ScanScreen(onNavigate: _navigateToTab),
+      ScanScreen(onNavigate: _navigateToTab, isActive: _currentIndex == 1),
       const GenerateScreen(),
       HistoryScreen(onBack: _handleBackFromHistory),
     ];

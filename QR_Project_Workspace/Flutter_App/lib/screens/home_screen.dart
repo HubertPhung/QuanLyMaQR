@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../database/history_notifier.dart';
 import '../database/qr_record.dart';
 import '../theme/app_colors.dart';
+import '../widgets/wifi_helper.dart';
 
 class HomeScreen extends StatelessWidget {
   final Function(int) onNavigate;
@@ -10,6 +13,44 @@ class HomeScreen extends StatelessWidget {
     super.key,
     required this.onNavigate,
   });
+
+  void _handleItemClick(BuildContext context, QrRecord record) async {
+    final t = record.type.toLowerCase();
+    final c = record.content;
+    final cl = c.toLowerCase();
+
+    if (t == 'url' || cl.startsWith('http://') || cl.startsWith('https://') || cl.contains('.com') || cl.contains('.vn')) {
+      String url = c;
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://$url";
+      }
+      try {
+        final uri = Uri.parse(url);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.card,
+              content: Text('Không thể mở: $url', style: const TextStyle(color: AppColors.foreground)),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else if (t == 'wifi' || c.toUpperCase().startsWith('WIFI:')) {
+      WifiHelper.showWifiModal(context, c);
+    } else {
+      Clipboard.setData(ClipboardData(text: c));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.card,
+          content: Text('Đã sao chép: $c', style: const TextStyle(color: AppColors.foreground)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,10 +148,12 @@ class HomeScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: HistoryNotifier.instance,
       builder: (context, _) {
-        final count = HistoryNotifier.instance.count;
+        final scannedCount = HistoryNotifier.instance.count;
+        final createdCount = HistoryNotifier.instance.createdCount;
+
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF142228), Color(0xFF151C26)],
@@ -128,56 +171,87 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.trending_up, color: AppColors.mint, size: 16),
-                      SizedBox(width: 6),
-                      Text(
-                        "Tuần này",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.mint,
+              // Cột 1: Tổng số lượng QR đã Quét
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.qr_code_scanner, color: AppColors.mint, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "QR Đã Quét",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.mint,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "$count",
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.foreground,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    "mã đã quét",
-                    style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-                  ),
-                ],
-              ),
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: AppColors.mint,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.mint.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                    const SizedBox(height: 8),
+                    Text(
+                      "$scannedCount",
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      "Tổng số QR đã quét",
+                      style: TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.qr_code_2, color: Color(0xFF0B0E11), size: 30),
+              ),
+
+              // Vách ngăn phân tách
+              Container(
+                width: 1,
+                height: 54,
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+
+              // Cột 2: Tổng số lượng QR đã Tạo
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.qr_code, color: AppColors.mint, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "QR Đã Tạo",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.mint,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "$createdCount",
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      "Tổng số QR đã tạo",
+                      style: TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -324,7 +398,7 @@ class HomeScreen extends StatelessWidget {
                 itemCount: recentItems.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
-                  return _buildRecentCard(recentItems[index]);
+                  return _buildRecentCard(context, recentItems[index]);
                 },
               ),
           ],
@@ -333,22 +407,23 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentCard(QrRecord item) {
+  Widget _buildRecentCard(BuildContext context, QrRecord item) {
     IconData icon;
     String label;
     final t = item.type.toLowerCase();
-    final c = item.content.toLowerCase();
+    final c = item.content;
+    final cl = c.toLowerCase();
 
-    if (t == 'url' || c.startsWith('http') || c.contains('.com')) {
+    if (t == 'url' || cl.startsWith('http') || cl.contains('.com')) {
       icon = Icons.language;
-      label = "Liên kết";
-    } else if (t == 'wifi' || c.startsWith('wifi:')) {
+      label = "Liên kết · Nhấn để mở web";
+    } else if (t == 'wifi' || c.toUpperCase().startsWith('WIFI:')) {
       icon = Icons.wifi;
-      label = "Wi-Fi";
-    } else if (t == 'payment' || c.contains('đ') || c.contains('vnd')) {
+      label = "Wi-Fi · Nhấn để xem & kết nối";
+    } else if (t == 'payment' || cl.contains('đ') || cl.contains('vnd')) {
       icon = Icons.credit_card;
       label = "Thanh toán";
-    } else if (t == 'contact' || c.contains('begin:vcard')) {
+    } else if (t == 'contact' || cl.contains('begin:vcard')) {
       icon = Icons.badge_outlined;
       label = "Danh bạ";
     } else {
@@ -356,50 +431,54 @@ class HomeScreen extends StatelessWidget {
       label = "Văn bản";
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.cardStroke),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.iconBg,
-              borderRadius: BorderRadius.circular(14),
+    return InkWell(
+      onTap: () => _handleItemClick(context, item),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.cardStroke),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.iconBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.mint, size: 20),
             ),
-            child: Icon(icon, color: AppColors.mint, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.content,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.foreground,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.content,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.foreground,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 18),
-        ],
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 18),
+          ],
+        ),
       ),
     );
   }

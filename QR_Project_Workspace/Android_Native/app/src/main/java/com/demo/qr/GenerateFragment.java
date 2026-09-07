@@ -279,6 +279,14 @@ public class GenerateFragment extends Fragment {
                 tvDownloadText.setText("Đã lưu mã QR");
                 Toast.makeText(getContext(), "Đã lưu mã QR thành công!", Toast.LENGTH_SHORT).show();
 
+                // Lưu lại lịch sử mã đã tạo để cập nhật số liệu ở Home
+                String payload = getPayload();
+                String typeStr = "text";
+                if (currentTab == TabType.URL) typeStr = "url";
+                else if (currentTab == TabType.WIFI) typeStr = "wifi";
+                String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(new java.util.Date());
+                HistoryRepository.getInstance().addCreatedRecord(requireContext(), new QrRecord(0, payload, typeStr, timestamp));
+
                 mainHandler.postDelayed(() -> {
                     if (isAdded()) {
                         isSaved = false;

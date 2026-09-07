@@ -16,7 +16,7 @@ import java.util.List;
 
 public class HomeFragment extends Fragment implements HistoryRepository.OnHistoryChangeListener {
 
-    private TextView tvScanCount, tvRecentEmpty;
+    private TextView tvScanCount, tvCreatedCount, tvRecentEmpty;
     private RecyclerView rvRecent;
     private HistoryAdapter adapter;
 
@@ -31,12 +31,21 @@ public class HomeFragment extends Fragment implements HistoryRepository.OnHistor
         super.onViewCreated(view, savedInstanceState);
 
         tvScanCount = view.findViewById(R.id.tvScanCount);
+        tvCreatedCount = view.findViewById(R.id.tvCreatedCount);
         tvRecentEmpty = view.findViewById(R.id.tvRecentEmpty);
         rvRecent = view.findViewById(R.id.rvRecent);
 
         rvRecent.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new HistoryAdapter(HistoryRepository.getInstance().getRecent(3), false, 3);
         rvRecent.setAdapter(adapter);
+
+        // Khởi tạo số liệu thống kê ban đầu
+        if (tvScanCount != null) {
+            tvScanCount.setText(String.valueOf(HistoryRepository.getInstance().getScannedCount()));
+        }
+        if (tvCreatedCount != null) {
+            tvCreatedCount.setText(String.valueOf(HistoryRepository.getInstance().getCreatedCount()));
+        }
 
         view.findViewById(R.id.cardQuickScan).setOnClickListener(v -> {
             if (getActivity() instanceof MainActivity) {
@@ -64,6 +73,9 @@ public class HomeFragment extends Fragment implements HistoryRepository.OnHistor
         if (tvScanCount != null) {
             tvScanCount.setText(String.valueOf(records.size()));
         }
+        if (tvCreatedCount != null) {
+            tvCreatedCount.setText(String.valueOf(HistoryRepository.getInstance().getCreatedCount()));
+        }
         if (adapter != null) {
             List<QrRecord> recent = HistoryRepository.getInstance().getRecent(3);
             adapter.updateData(recent);
@@ -76,6 +88,16 @@ public class HomeFragment extends Fragment implements HistoryRepository.OnHistor
                     rvRecent.setVisibility(View.VISIBLE);
                 }
             }
+        }
+    }
+
+    @Override
+    public void onStatsChanged(int scannedCount, int createdCount) {
+        if (tvScanCount != null) {
+            tvScanCount.setText(String.valueOf(scannedCount));
+        }
+        if (tvCreatedCount != null) {
+            tvCreatedCount.setText(String.valueOf(createdCount));
         }
     }
 

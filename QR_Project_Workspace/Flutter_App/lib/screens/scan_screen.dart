@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../database/history_notifier.dart';
 import '../database/qr_record.dart';
 import '../theme/app_colors.dart';
+import '../widgets/wifi_helper.dart';
 
 class ScanScreen extends StatefulWidget {
   final Function(int) onNavigate;
+  final bool isActive;
 
   const ScanScreen({
     super.key,
     required this.onNavigate,
+    this.isActive = true,
   });
 
   @override
@@ -36,6 +40,20 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   }
 
   @override
+  void didUpdateWidget(covariant ScanScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive) {
+      if (widget.isActive) {
+        _scannerController.start();
+        _animController.repeat(reverse: true);
+      } else {
+        _scannerController.stop();
+        _animController.stop();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _scannerController.dispose();
     _animController.dispose();
@@ -43,7 +61,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   }
 
   void _onDetect(BarcodeCapture capture) async {
-    if (_isProcessing) return;
+    if (_isProcessing || !widget.isActive) return;
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
       _isProcessing = true;
@@ -53,8 +71,14 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       HapticFeedback.mediumImpact();
 
       // Phân loại
+      final lower = code.toLowerCase();
       String type = "text";
-      if (code.toLowerCase().startsWith("http") || code.contains(".com")) {
+      if (lower.startsWith("http://") ||
+          lower.startsWith("https://") ||
+          lower.contains(".com") ||
+          lower.contains(".vn") ||
+          lower.contains(".net") ||
+          lower.contains(".org")) {
         type = "url";
       } else if (code.toUpperCase().startsWith("WIFI:")) {
         type = "wifi";
@@ -71,17 +95,92 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       ));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.card,
-            content: Text('Đã quét: $code', style: const TextStyle(color: AppColors.foreground)),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _handleScanAction(type, code);
       }
 
       await Future.delayed(const Duration(seconds: 2));
       _isProcessing = false;
+    }
+  }
+
+  void _handleScanAction(String type, String code) async {
+    if (!mounted) return;
+
+    if (type == 'url') {
+      String url = code;
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://$url";
+      }
+      try {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.card,
+            content: Text('Đang mở liên kết…', style: TextStyle(color: AppColors.mint)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        final uri = Uri.parse(url);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.card,
+              content: Text('Không thể mở liên kết: $url', style: const TextStyle(color: AppColors.foreground)),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else if (type == 'wifi') {
+      WifiHelper.showWifiModal(context, code);
+      WifiHelper.connectToWifi(context, WifiHelper.parseWifi(code));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.card,
+          content: Text('Đã quét: $code', style: const TextStyle(color: AppColors.foreground)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _handleItemClick(BuildContext context, QrRecord record) async {
+    final t = record.type.toLowerCase();
+    final c = record.content;
+    final cl = c.toLowerCase();
+
+    if (t == 'url' || cl.startsWith('http://') || cl.startsWith('https://') || cl.contains('.com') || cl.contains('.vn')) {
+      String url = c;
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://$url";
+      }
+      try {
+        final uri = Uri.parse(url);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.card,
+              content: Text('Không thể mở: $url', style: const TextStyle(color: AppColors.foreground)),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else if (t == 'wifi' || c.toUpperCase().startsWith('WIFI:')) {
+      WifiHelper.showWifiModal(context, c);
+    } else {
+      Clipboard.setData(ClipboardData(text: c));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.card,
+          content: Text('Đã sao chép: $c', style: const TextStyle(color: AppColors.foreground)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -197,40 +296,52 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
             borderRadius: BorderRadius.circular(36),
             child: Stack(
               children: [
-                MobileScanner(
-                  controller: _scannerController,
-                  onDetect: _onDetect,
-                ),
+                // Chỉ bật Camera khi tab Quét mã đang active
+                if (widget.isActive)
+                  MobileScanner(
+                    controller: _scannerController,
+                    onDetect: _onDetect,
+                  )
+                else
+                  Container(
+                    color: const Color(0xFF0B1220),
+                    child: const Center(
+                      child: Icon(Icons.videocam_off_outlined, color: AppColors.mutedForeground, size: 42),
+                    ),
+                  ),
+
                 // Scanner overlay with neon mint corner brackets & mock matrix
                 CustomPaint(
                   size: const Size(290, 290),
                   painter: ScannerOverlayPainter(),
                 ),
-                // Animated laser scan line
-                AnimatedBuilder(
-                  animation: _laserAnimation,
-                  builder: (context, _) {
-                    return Positioned(
-                      top: _laserAnimation.value * 270,
-                      left: 20,
-                      right: 20,
-                      child: Container(
-                        height: 2.5,
-                        decoration: BoxDecoration(
-                          color: AppColors.mint,
-                          borderRadius: BorderRadius.circular(2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.mint.withValues(alpha: 0.8),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
-                          ],
+
+                // Animated laser scan line (chỉ chạy khi tab active)
+                if (widget.isActive)
+                  AnimatedBuilder(
+                    animation: _laserAnimation,
+                    builder: (context, _) {
+                      return Positioned(
+                        top: _laserAnimation.value * 270,
+                        left: 20,
+                        right: 20,
+                        child: Container(
+                          height: 2.5,
+                          decoration: BoxDecoration(
+                            color: AppColors.mint,
+                            borderRadius: BorderRadius.circular(2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.mint.withValues(alpha: 0.8),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -249,12 +360,12 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.bolt, color: AppColors.mint, size: 16),
-                SizedBox(width: 6),
+              children: [
+                Icon(widget.isActive ? Icons.bolt : Icons.pause, color: AppColors.mint, size: 16),
+                const SizedBox(width: 6),
                 Text(
-                  "Đang quét…",
-                  style: TextStyle(
+                  widget.isActive ? "Đang quét…" : "Tạm dừng",
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: AppColors.foreground,
@@ -372,10 +483,10 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     final c = record.content.toLowerCase();
 
     if (t == 'url' || c.startsWith('http') || c.contains('.com')) {
-      subtitle = "Liên kết · Liên kết website";
+      subtitle = "Liên kết · Nhấn để mở web";
       icon = Icons.language;
     } else if (t == 'wifi' || c.startsWith('wifi:')) {
-      subtitle = "Wi-Fi · Mạng Wi-Fi";
+      subtitle = "Wi-Fi · Nhấn để xem & kết nối";
       icon = Icons.wifi;
     } else if (t == 'payment' || c.contains('đ') || c.contains('vnd')) {
       subtitle = "Thanh toán · Chuyển khoản QR";
@@ -402,55 +513,59 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       }
     } catch (_) {}
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.cardStroke),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.iconBg,
-              borderRadius: BorderRadius.circular(14),
+    return InkWell(
+      onTap: () => _handleItemClick(context, record),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.cardStroke),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.iconBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.mint, size: 20),
             ),
-            child: Icon(icon, color: AppColors.mint, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.content,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.foreground,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    record.content,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.foreground,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            "$relativeTime >",
-            style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              "$relativeTime >",
+              style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+            ),
+          ],
+        ),
       ),
     );
   }

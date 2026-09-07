@@ -4,9 +4,11 @@ import 'qr_record.dart';
 
 class DatabaseHelper {
   static const _databaseName = "qr_database.db";
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 2;
 
   static const tableQrHistory = 'qr_history';
+  static const tableQrCreated = 'qr_created';
+
   static const columnId = 'id';
   static const columnContent = 'content';
   static const columnType = 'type';
@@ -30,12 +32,33 @@ class DatabaseHelper {
       path,
       version: _databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+      onOpen: (db) async {
+        // Đảm bảo bảng qr_created luôn tồn tại
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS $tableQrCreated (
+            $columnId INTEGER PRIMARY KEY AUTOINCREMENT,
+            $columnContent TEXT,
+            $columnType TEXT,
+            $columnTimestamp TEXT
+          )
+        ''');
+      },
     );
   }
 
   Future _onCreate(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE $tableQrHistory (
+      CREATE TABLE IF NOT EXISTS $tableQrHistory (
+        $columnId INTEGER PRIMARY KEY AUTOINCREMENT,
+        $columnContent TEXT,
+        $columnType TEXT,
+        $columnTimestamp TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $tableQrCreated (
         $columnId INTEGER PRIMARY KEY AUTOINCREMENT,
         $columnContent TEXT,
         $columnType TEXT,
@@ -44,7 +67,21 @@ class DatabaseHelper {
     ''');
   }
 
-  // 1. Thêm lịch sử (addRecord)
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $tableQrCreated (
+          $columnId INTEGER PRIMARY KEY AUTOINCREMENT,
+          $columnContent TEXT,
+          $columnType TEXT,
+          $columnTimestamp TEXT
+        )
+      ''');
+    }
+  }
+
+  // --- QUẢN LÝ MÃ ĐÃ QUÉT ---
+
   Future<int> addRecord(QrRecord record) async {
     Database db = await instance.database;
     return await db.insert(
@@ -54,32 +91,76 @@ class DatabaseHelper {
     );
   }
 
-  // 2. Lấy toàn bộ danh sách (getAllRecords)
   Future<List<QrRecord>> getAllRecords() async {
     Database db = await instance.database;
-    // Lấy dữ liệu và sắp xếp theo ID giảm dần (mới nhất lên đầu)
     final List<Map<String, dynamic>> maps = await db.query(
       tableQrHistory,
       orderBy: '$columnId DESC',
     );
 
-    // Chuyển List<Map<String, dynamic>> thành List<QrRecord>
     return List.generate(maps.length, (i) {
       return QrRecord.fromMap(maps[i]);
     });
   }
 
-  // 3. Xóa toàn bộ dữ liệu (deleteAll)
+  Future<int> getScannedCount() async {
+    Database db = await instance.database;
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM $tableQrHistory');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
   Future<int> deleteAll() async {
     Database db = await instance.database;
     return await db.delete(tableQrHistory);
   }
 
-  // 4. Xóa từng bản ghi (deleteRecord)
   Future<int> deleteRecord(int id) async {
     Database db = await instance.database;
     return await db.delete(
       tableQrHistory,
+      where: '$columnId = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // --- QUẢN LÝ MÃ ĐÃ TẠO ---
+
+  Future<int> addCreatedRecord(QrRecord record) async {
+    Database db = await instance.database;
+    return await db.insert(
+      tableQrCreated,
+      record.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<QrRecord>> getAllCreatedRecords() async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      tableQrCreated,
+      orderBy: '$columnId DESC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return QrRecord.fromMap(maps[i]);
+    });
+  }
+
+  Future<int> getCreatedCount() async {
+    Database db = await instance.database;
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM $tableQrCreated');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> deleteAllCreated() async {
+    Database db = await instance.database;
+    return await db.delete(tableQrCreated);
+  }
+
+  Future<int> deleteCreatedRecord(int id) async {
+    Database db = await instance.database;
+    return await db.delete(
+      tableQrCreated,
       where: '$columnId = ?',
       whereArgs: [id],
     );
