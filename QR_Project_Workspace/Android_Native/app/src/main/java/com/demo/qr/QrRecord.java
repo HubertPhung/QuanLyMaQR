@@ -5,14 +5,20 @@ public class QrRecord {
     private String content;
     private String type;
     private String timestamp;
+    private boolean isCreated = false;
 
     public QrRecord() {}
 
     public QrRecord(int id, String content, String type, String timestamp) {
+        this(id, content, type, timestamp, false);
+    }
+
+    public QrRecord(int id, String content, String type, String timestamp, boolean isCreated) {
         this.id = id;
         this.content = content;
         this.type = type;
         this.timestamp = timestamp;
+        this.isCreated = isCreated;
     }
 
     public int getId() {
@@ -45,5 +51,13 @@ public class QrRecord {
 
     public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public boolean isCreated() {
+        return isCreated;
+    }
+
+    public void setCreated(boolean created) {
+        isCreated = created;
     }
 }

@@ -83,13 +83,14 @@ class _GenerateScreenState extends State<GenerateScreen> {
         content: payload,
         type: typeStr,
         timestamp: DateTime.now().toIso8601String(),
+        isCreated: true,
       ));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             backgroundColor: AppColors.card,
-            content: Text("Đã lưu mã QR vào: $filePath", style: const TextStyle(color: AppColors.foreground)),
+            content: Text("Đã lưu mã QR thành công vào lịch sử!", style: TextStyle(color: AppColors.foreground)),
             behavior: SnackBarBehavior.floating,
           ),
         );

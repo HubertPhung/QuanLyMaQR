@@ -71,7 +71,7 @@ public class HomeFragment extends Fragment implements HistoryRepository.OnHistor
     @Override
     public void onHistoryChanged(List<QrRecord> records) {
         if (tvScanCount != null) {
-            tvScanCount.setText(String.valueOf(records.size()));
+            tvScanCount.setText(String.valueOf(HistoryRepository.getInstance().getScannedCount()));
         }
         if (tvCreatedCount != null) {
             tvCreatedCount.setText(String.valueOf(HistoryRepository.getInstance().getCreatedCount()));

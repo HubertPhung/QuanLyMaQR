@@ -142,7 +142,7 @@ class DatabaseHelper {
     );
 
     return List.generate(maps.length, (i) {
-      return QrRecord.fromMap(maps[i]);
+      return QrRecord.fromMap(maps[i], isCreated: true);
     });
   }
 

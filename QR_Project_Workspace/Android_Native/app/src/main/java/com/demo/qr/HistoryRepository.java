@@ -4,11 +4,9 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,12 +19,12 @@ public class HistoryRepository {
     }
 
     private static HistoryRepository instance;
-    private final List<QrRecord> records = new ArrayList<>();
+    private final List<QrRecord> scannedRecords = new ArrayList<>();
+    private final List<QrRecord> createdRecords = new ArrayList<>();
     private final List<OnHistoryChangeListener> listeners = new CopyOnWriteArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private boolean isLoaded = false;
-    private int createdCount = 0;
 
     private HistoryRepository() {}
 
@@ -42,8 +40,8 @@ public class HistoryRepository {
             listeners.add(listener);
         }
         if (isLoaded) {
-            listener.onHistoryChanged(new ArrayList<>(records));
-            listener.onStatsChanged(records.size(), createdCount);
+            listener.onHistoryChanged(getAllRecords());
+            listener.onStatsChanged(scannedRecords.size(), createdRecords.size());
         }
     }
 
@@ -54,58 +52,70 @@ public class HistoryRepository {
     public void load(Context context) {
         executor.execute(() -> {
             DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
-            List<QrRecord> dbRecords = dbHelper.getAllRecords();
+            List<QrRecord> dbScanned = dbHelper.getAllRecords();
+            List<QrRecord> dbCreated = dbHelper.getAllCreatedRecords();
 
-            if (dbRecords.isEmpty()) {
-                long now = System.currentTimeMillis();
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-
-                // Khởi tạo 7 mục lịch sử mẫu ban đầu chuẩn giao diện
-                dbHelper.addRecord(new QrRecord(0, "vercel.com/dashboard", "url", sdf.format(new Date(now - 15 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "WIFI:T:WPA;S:Coffee_House_5G;P:Coffee@2026;;", "wifi", sdf.format(new Date(now - 2 * 60 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "240.000đ", "payment", sdf.format(new Date(now - 18 * 60 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "Hoài Bo", "contact", sdf.format(new Date(now - 24 * 3600 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "github.com/vercel/next.js", "url", sdf.format(new Date(now - 26 * 3600 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "WIFI:T:WPA;S:Home_Network_2.4G;P:Password123;;", "wifi", sdf.format(new Date(now - 2 * 24 * 3600 * 1000L))));
-                dbHelper.addRecord(new QrRecord(0, "89.000đ", "payment", sdf.format(new Date(now - 3 * 24 * 3600 * 1000L))));
-
-                dbRecords = dbHelper.getAllRecords();
-            }
-
-            // Kiểm tra và khởi tạo mã tạo mẫu nếu chưa có
-            int cCount = dbHelper.getCreatedCount();
-            if (cCount == 0) {
-                long now = System.currentTimeMillis();
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                dbHelper.addCreatedRecord(new QrRecord(0, "https://github.com/HubertPhung", "url", sdf.format(new Date(now - 3600 * 1000L))));
-                dbHelper.addCreatedRecord(new QrRecord(0, "WIFI:T:WPA;S:Studio_Guest;P:guest2026;;", "wifi", sdf.format(new Date(now - 7200 * 1000L))));
-                dbHelper.addCreatedRecord(new QrRecord(0, "Demo Project QR 2026", "text", sdf.format(new Date(now - 10800 * 1000L))));
-                cCount = dbHelper.getCreatedCount();
-            }
-
-            final List<QrRecord> result = dbRecords;
-            final int finalCreatedCount = cCount;
             mainHandler.post(() -> {
-                records.clear();
-                records.addAll(result);
-                createdCount = finalCreatedCount;
+                scannedRecords.clear();
+                scannedRecords.addAll(dbScanned);
+                createdRecords.clear();
+                createdRecords.addAll(dbCreated);
                 isLoaded = true;
                 notifyListeners();
             });
         });
     }
 
-    public void deleteItem(Context context, int id) {
+    public void deleteItem(Context context, int id, boolean isCreated) {
         executor.execute(() -> {
             DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
-            dbHelper.deleteRecord(id);
+            if (isCreated) {
+                dbHelper.deleteCreatedRecord(id);
+            } else {
+                dbHelper.deleteRecord(id);
+            }
             mainHandler.post(() -> {
-                for (int i = 0; i < records.size(); i++) {
-                    if (records.get(i).getId() == id) {
-                        records.remove(i);
-                        break;
+                if (isCreated) {
+                    for (int i = 0; i < createdRecords.size(); i++) {
+                        if (createdRecords.get(i).getId() == id) {
+                            createdRecords.remove(i);
+                            break;
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < scannedRecords.size(); i++) {
+                        if (scannedRecords.get(i).getId() == id) {
+                            scannedRecords.remove(i);
+                            break;
+                        }
                     }
                 }
+                notifyListeners();
+            });
+        });
+    }
+
+    public void deleteItem(Context context, int id) {
+        deleteItem(context, id, false);
+    }
+
+    public void clearAllScanned(Context context) {
+        executor.execute(() -> {
+            DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
+            dbHelper.deleteAll();
+            mainHandler.post(() -> {
+                scannedRecords.clear();
+                notifyListeners();
+            });
+        });
+    }
+
+    public void clearAllCreated(Context context) {
+        executor.execute(() -> {
+            DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
+            dbHelper.deleteAllCreated();
+            mainHandler.post(() -> {
+                createdRecords.clear();
                 notifyListeners();
             });
         });
@@ -115,8 +125,10 @@ public class HistoryRepository {
         executor.execute(() -> {
             DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
             dbHelper.deleteAll();
+            dbHelper.deleteAllCreated();
             mainHandler.post(() -> {
-                records.clear();
+                scannedRecords.clear();
+                createdRecords.clear();
                 notifyListeners();
             });
         });
@@ -128,8 +140,8 @@ public class HistoryRepository {
             dbHelper.addRecord(record);
             List<QrRecord> dbRecords = dbHelper.getAllRecords();
             mainHandler.post(() -> {
-                records.clear();
-                records.addAll(dbRecords);
+                scannedRecords.clear();
+                scannedRecords.addAll(dbRecords);
                 notifyListeners();
             });
         });
@@ -139,44 +151,70 @@ public class HistoryRepository {
         executor.execute(() -> {
             DatabaseHelper dbHelper = new DatabaseHelper(context.getApplicationContext());
             dbHelper.addCreatedRecord(record);
-            int newCount = dbHelper.getCreatedCount();
+            List<QrRecord> dbCreated = dbHelper.getAllCreatedRecords();
             mainHandler.post(() -> {
-                createdCount = newCount;
+                createdRecords.clear();
+                createdRecords.addAll(dbCreated);
                 notifyListeners();
             });
         });
     }
 
     private void notifyListeners() {
-        List<QrRecord> copy = new ArrayList<>(records);
-        int scanned = copy.size();
-        int created = createdCount;
+        List<QrRecord> all = getAllRecords();
+        int scanned = scannedRecords.size();
+        int created = createdRecords.size();
         for (OnHistoryChangeListener listener : listeners) {
-            listener.onHistoryChanged(copy);
+            listener.onHistoryChanged(all);
             listener.onStatsChanged(scanned, created);
         }
     }
 
+    public List<QrRecord> getAllRecords() {
+        List<QrRecord> all = new ArrayList<>();
+        all.addAll(scannedRecords);
+        all.addAll(createdRecords);
+        Collections.sort(all, (a, b) -> {
+            String tA = a.getTimestamp() != null ? a.getTimestamp() : "";
+            String tB = b.getTimestamp() != null ? b.getTimestamp() : "";
+            return tB.compareTo(tA);
+        });
+        return all;
+    }
+
+    public List<QrRecord> getScannedRecords() {
+        return new ArrayList<>(scannedRecords);
+    }
+
+    public List<QrRecord> getCreatedRecords() {
+        return new ArrayList<>(createdRecords);
+    }
+
     public List<QrRecord> getRecords() {
-        return new ArrayList<>(records);
+        return getAllRecords();
     }
 
     public int getCount() {
-        return records.size();
+        return scannedRecords.size();
     }
 
     public int getScannedCount() {
-        return records.size();
+        return scannedRecords.size();
     }
 
     public int getCreatedCount() {
-        return createdCount;
+        return createdRecords.size();
+    }
+
+    public int getTotalCount() {
+        return scannedRecords.size() + createdRecords.size();
     }
 
     public List<QrRecord> getRecent(int limit) {
-        if (records.size() <= limit) {
-            return new ArrayList<>(records);
+        List<QrRecord> all = getAllRecords();
+        if (all.size() <= limit) {
+            return new ArrayList<>(all);
         }
-        return new ArrayList<>(records.subList(0, limit));
+        return new ArrayList<>(all.subList(0, limit));
     }
 }

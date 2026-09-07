@@ -71,6 +71,19 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         int iconRes = getIconRes(record.getType(), record.getContent());
         holder.ivIcon.setImageResource(iconRes);
 
+        if (holder.tvBadge != null) {
+            holder.tvBadge.setVisibility(View.VISIBLE);
+            if (record.isCreated()) {
+                holder.tvBadge.setText("Đã tạo");
+                holder.tvBadge.setBackgroundResource(R.drawable.bg_badge_created);
+                holder.tvBadge.setTextColor(androidx.core.content.ContextCompat.getColor(ctx, R.color.qr_mint));
+            } else {
+                holder.tvBadge.setText("Đã quét");
+                holder.tvBadge.setBackgroundResource(R.drawable.bg_badge_scanned);
+                holder.tvBadge.setTextColor(androidx.core.content.ContextCompat.getColor(ctx, R.color.qr_muted));
+            }
+        }
+
         if (showDeleteButton) {
             holder.tvTime.setVisibility(View.GONE);
             holder.btnDelete.setVisibility(View.VISIBLE);
@@ -189,7 +202,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitle, tvSubtitle, tvTime;
+        TextView tvTitle, tvSubtitle, tvTime, tvBadge;
         ImageView ivIcon;
         FrameLayout iconContainer, btnDelete;
 
@@ -198,6 +211,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
             tvTitle = itemView.findViewById(R.id.tvTitle);
             tvSubtitle = itemView.findViewById(R.id.tvSubtitle);
             tvTime = itemView.findViewById(R.id.tvTime);
+            tvBadge = itemView.findViewById(R.id.tvBadge);
             ivIcon = itemView.findViewById(R.id.ivIcon);
             iconContainer = itemView.findViewById(R.id.iconContainer);
             btnDelete = itemView.findViewById(R.id.btnDelete);

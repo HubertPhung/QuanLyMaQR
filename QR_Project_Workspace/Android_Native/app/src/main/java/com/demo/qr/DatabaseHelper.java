@@ -114,7 +114,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public List<QrRecord> getAllCreatedRecords() {
-        return getRecordsFromTable(TABLE_QR_CREATED);
+        List<QrRecord> records = getRecordsFromTable(TABLE_QR_CREATED);
+        for (QrRecord r : records) {
+            r.setCreated(true);
+        }
+        return records;
     }
 
     public int getCreatedCount() {

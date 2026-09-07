@@ -137,6 +137,59 @@
             </LinearLayout>
         </RelativeLayout>
 
+        <!-- Filter Tabs: Tất cả, Đã quét, Đã tạo -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_card"
+            android:orientation="horizontal"
+            android:padding="4dp">
+
+            <TextView
+                android:id="@+id/tabAll"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_tab_selected"
+                android:gravity="center"
+                android:paddingVertical="9dp"
+                android:text="Tất cả"
+                android:textColor="@color/qr_mint_dark"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tabScanned"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingVertical="9dp"
+                android:text="Đã quét"
+                android:textColor="@color/qr_muted"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tabCreated"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingVertical="9dp"
+                android:text="Đã tạo"
+                android:textColor="@color/qr_muted"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
         <!-- Empty State -->
         <LinearLayout
             android:id="@+id/layoutEmpty"
@@ -155,6 +208,7 @@
                 android:layout_height="58dp"
                 android:background="@drawable/bg_icon_circle">
                 <ImageView
+                    android:id="@+id/ivEmptyIcon"
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_gravity="center"
@@ -163,6 +217,7 @@
             </FrameLayout>
 
             <TextView
+                android:id="@+id/tvEmptyTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -172,10 +227,11 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvEmptySubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Các mã QR bạn quét sẽ xuất hiện tại đây."
+                android:text="Các mã QR bạn quét hoặc tạo sẽ xuất hiện tại đây."
                 android:textColor="@color/qr_muted"
                 android:textSize="12sp"
                 android:gravity="center" />

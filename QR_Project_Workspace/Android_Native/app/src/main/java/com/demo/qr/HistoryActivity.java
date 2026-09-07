@@ -93,6 +93,7 @@ public class HistoryActivity extends AppCompatActivity {
                 .setPositiveButton("Xóa", (d, w) -> {
                     executor.execute(() -> {
                         dbHelper.deleteAll();
+                        dbHelper.deleteAllCreated();
                         runOnUiThread(() -> {
                             allRecords.clear();
                             adapter.updateData(allRecords);
@@ -110,7 +111,14 @@ public class HistoryActivity extends AppCompatActivity {
 
     private void loadAllRecords() {
         executor.execute(() -> {
-            List<QrRecord> records = dbHelper.getAllRecords();
+            List<QrRecord> records = new ArrayList<>();
+            records.addAll(dbHelper.getAllRecords());
+            records.addAll(dbHelper.getAllCreatedRecords());
+            java.util.Collections.sort(records, (a, b) -> {
+                String tA = a.getTimestamp() != null ? a.getTimestamp() : "";
+                String tB = b.getTimestamp() != null ? b.getTimestamp() : "";
+                return tB.compareTo(tA);
+            });
             runOnUiThread(() -> {
                 allRecords.clear();
                 allRecords.addAll(records);

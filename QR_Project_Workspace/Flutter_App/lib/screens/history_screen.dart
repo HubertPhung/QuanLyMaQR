@@ -6,7 +6,7 @@ import '../database/qr_record.dart';
 import '../theme/app_colors.dart';
 import '../widgets/wifi_helper.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   final VoidCallback onBack;
 
   const HistoryScreen({
@@ -14,16 +14,35 @@ class HistoryScreen extends StatelessWidget {
     required this.onBack,
   });
 
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  // 0: Tất cả, 1: Đã quét, 2: Đã tạo
+  int _selectedFilter = 0;
+
   void _confirmDeleteAll(BuildContext context) {
+    String title = "Xóa toàn bộ lịch sử?";
+    String message = "Tất cả các mã đã quét và đã tạo sẽ bị xóa vĩnh viễn.";
+
+    if (_selectedFilter == 1) {
+      title = "Xóa lịch sử quét?";
+      message = "Tất cả các mã đã quét sẽ bị xóa vĩnh viễn.";
+    } else if (_selectedFilter == 2) {
+      title = "Xóa lịch sử tạo mã?";
+      message = "Tất cả các mã bạn đã tạo sẽ bị xóa vĩnh viễn.";
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text("Xóa toàn bộ lịch sử?", style: TextStyle(color: AppColors.foreground, fontWeight: FontWeight.bold)),
-        content: const Text(
-          "Tất cả các mã đã quét sẽ bị xóa vĩnh viễn.",
-          style: TextStyle(color: AppColors.mutedForeground, fontSize: 13),
+        title: Text(title, style: const TextStyle(color: AppColors.foreground, fontWeight: FontWeight.bold)),
+        content: Text(
+          message,
+          style: const TextStyle(color: AppColors.mutedForeground, fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -33,11 +52,18 @@ class HistoryScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              HistoryNotifier.instance.clearAll();
+              if (_selectedFilter == 1) {
+                HistoryNotifier.instance.clearAllScanned();
+              } else if (_selectedFilter == 2) {
+                HistoryNotifier.instance.clearAllCreated();
+              } else {
+                HistoryNotifier.instance.clearAll();
+              }
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   backgroundColor: AppColors.card,
-                  content: Text("Đã xóa toàn bộ lịch sử", style: TextStyle(color: AppColors.foreground)),
+                  content: Text("Đã xóa lịch sử thành công", style: TextStyle(color: AppColors.foreground)),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -100,6 +126,8 @@ class HistoryScreen extends StatelessWidget {
               _buildTopHeader(),
               const SizedBox(height: 20),
               _buildSubHeader(context),
+              const SizedBox(height: 16),
+              _buildFilterTabs(),
               const SizedBox(height: 18),
               _buildHistoryList(),
             ],
@@ -126,7 +154,7 @@ class HistoryScreen extends StatelessWidget {
             ),
             SizedBox(height: 2),
             Text(
-              "Các mã đã quét gần đây",
+              "Quản lý mã đã quét và đã tạo",
               style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
             ),
           ],
@@ -139,7 +167,7 @@ class HistoryScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.cardStroke),
           ),
-          child: const Icon(Icons.share_outlined, color: Color(0xFFA0AEC0), size: 19),
+          child: const Icon(Icons.history, color: Color(0xFFA0AEC0), size: 19),
         ),
       ],
     );
@@ -149,14 +177,25 @@ class HistoryScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: HistoryNotifier.instance,
       builder: (context, _) {
-        final count = HistoryNotifier.instance.count;
+        final currentRecords = _getCurrentRecords();
+        final count = currentRecords.length;
+
+        String countText;
+        if (_selectedFilter == 1) {
+          countText = "$count mã đã quét";
+        } else if (_selectedFilter == 2) {
+          countText = "$count mã đã tạo";
+        } else {
+          countText = "$count mã trong lịch sử";
+        }
+
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
                 InkWell(
-                  onTap: onBack,
+                  onTap: widget.onBack,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 38,
@@ -174,7 +213,7 @@ class HistoryScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Lịch sử quét",
+                      "Nhật ký hoạt động",
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -183,7 +222,7 @@ class HistoryScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "$count mã đã quét",
+                      countText,
                       style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                     ),
                   ],
@@ -224,11 +263,78 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildFilterTabs() {
+    return AnimatedBuilder(
+      animation: HistoryNotifier.instance,
+      builder: (context, _) {
+        final totalCount = HistoryNotifier.instance.totalCount;
+        final scannedCount = HistoryNotifier.instance.scannedCount;
+        final createdCount = HistoryNotifier.instance.createdCount;
+
+        return Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.cardStroke),
+          ),
+          child: Row(
+            children: [
+              _buildTabItem(0, "Tất cả ($totalCount)"),
+              _buildTabItem(1, "Đã quét ($scannedCount)"),
+              _buildTabItem(2, "Đã tạo ($createdCount)"),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTabItem(int index, String title) {
+    final isSelected = _selectedFilter == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedFilter = index;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.mint : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? const Color(0xFF0B0E11) : AppColors.mutedForeground,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<QrRecord> _getCurrentRecords() {
+    if (_selectedFilter == 1) {
+      return HistoryNotifier.instance.scannedRecords;
+    } else if (_selectedFilter == 2) {
+      return HistoryNotifier.instance.createdRecords;
+    }
+    return HistoryNotifier.instance.allRecords;
+  }
+
   Widget _buildHistoryList() {
     return AnimatedBuilder(
       animation: HistoryNotifier.instance,
       builder: (context, _) {
-        final records = HistoryNotifier.instance.records;
+        final records = _getCurrentRecords();
 
         if (records.isEmpty) {
           return _buildEmptyState();
@@ -257,10 +363,10 @@ class HistoryScreen extends StatelessWidget {
 
     if (t == 'url' || cl.startsWith('http') || cl.contains('.com')) {
       icon = Icons.language;
-      label = "Liên kết · Nhấn để mở web";
+      label = "Liên kết";
     } else if (t == 'wifi' || c.toUpperCase().startsWith('WIFI:')) {
       icon = Icons.wifi;
-      label = "Wi-Fi · Nhấn để xem & kết nối";
+      label = "Wi-Fi";
     } else if (t == 'payment' || cl.contains('đ') || cl.contains('vnd')) {
       icon = Icons.credit_card;
       label = "Thanh toán";
@@ -289,6 +395,8 @@ class HistoryScreen extends StatelessWidget {
       }
     } catch (_) {}
 
+    final sourceText = item.isCreated ? "Đã tạo" : "Đã quét";
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -308,27 +416,63 @@ class HistoryScreen extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.iconBg,
+                    color: item.isCreated
+                        ? AppColors.mint.withValues(alpha: 0.12)
+                        : AppColors.iconBg,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, color: AppColors.mint, size: 20),
+                  child: Icon(
+                    icon,
+                    color: item.isCreated ? AppColors.mint : AppColors.mint,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.content,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.foreground,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.content,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.foreground,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Badge phân biệt Đã tạo / Đã quét
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: item.isCreated
+                                  ? AppColors.mint.withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: item.isCreated
+                                    ? AppColors.mint.withValues(alpha: 0.4)
+                                    : Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Text(
+                              sourceText,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: item.isCreated ? AppColors.mint : AppColors.mutedForeground,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                         "$label · $relativeTime",
                         style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
@@ -336,12 +480,12 @@ class HistoryScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 // Individual delete button
                 InkWell(
                   onTap: () {
                     if (item.id != null) {
-                      HistoryNotifier.instance.deleteItem(item.id!);
+                      HistoryNotifier.instance.deleteItem(item.id!, isCreated: item.isCreated);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           backgroundColor: AppColors.card,
@@ -372,6 +516,17 @@ class HistoryScreen extends StatelessWidget {
   }
 
   Widget _buildEmptyState() {
+    String title = "Chưa có lịch sử";
+    String subtitle = "Các mã QR bạn quét hoặc tạo sẽ xuất hiện tại đây.";
+
+    if (_selectedFilter == 1) {
+      title = "Chưa có mã đã quét";
+      subtitle = "Các mã QR bạn quét qua Camera sẽ xuất hiện tại đây.";
+    } else if (_selectedFilter == 2) {
+      title = "Chưa có mã đã tạo";
+      subtitle = "Các mã QR bạn tự tạo sẽ xuất hiện tại đây.";
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
@@ -390,22 +545,26 @@ class HistoryScreen extends StatelessWidget {
               color: AppColors.iconBg,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Icon(Icons.qr_code_2, color: AppColors.mutedForeground, size: 28),
+            child: Icon(
+              _selectedFilter == 2 ? Icons.qr_code : Icons.qr_code_scanner,
+              color: AppColors.mutedForeground,
+              size: 28,
+            ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            "Chưa có lịch sử",
-            style: TextStyle(
+          Text(
+            title,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
               color: AppColors.foreground,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            "Các mã QR bạn quét sẽ xuất hiện tại đây.",
+          Text(
+            subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+            style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
           ),
         ],
       ),

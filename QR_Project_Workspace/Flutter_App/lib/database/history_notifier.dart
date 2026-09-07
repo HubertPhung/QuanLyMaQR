@@ -6,13 +6,32 @@ class HistoryNotifier extends ChangeNotifier {
   static final HistoryNotifier instance = HistoryNotifier._internal();
   HistoryNotifier._internal();
 
-  List<QrRecord> _records = [];
-  int _createdCount = 0;
+  List<QrRecord> _scannedRecords = [];
+  List<QrRecord> _createdRecords = [];
   bool _isLoading = true;
 
-  List<QrRecord> get records => List.unmodifiable(_records);
-  int get count => _records.length;
-  int get createdCount => _createdCount;
+  List<QrRecord> get scannedRecords => List.unmodifiable(_scannedRecords);
+  List<QrRecord> get createdRecords => List.unmodifiable(_createdRecords);
+
+  List<QrRecord> get allRecords {
+    final combined = <QrRecord>[..._scannedRecords, ..._createdRecords];
+    combined.sort((a, b) {
+      try {
+        final dateA = DateTime.parse(a.timestamp);
+        final dateB = DateTime.parse(b.timestamp);
+        return dateB.compareTo(dateA);
+      } catch (_) {
+        return 0;
+      }
+    });
+    return List.unmodifiable(combined);
+  }
+
+  List<QrRecord> get records => allRecords;
+  int get count => _scannedRecords.length;
+  int get scannedCount => _scannedRecords.length;
+  int get createdCount => _createdRecords.length;
+  int get totalCount => _scannedRecords.length + _createdRecords.length;
   bool get isLoading => _isLoading;
 
   Future<void> init() async {
@@ -23,113 +42,59 @@ class HistoryNotifier extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    var list = await DatabaseHelper.instance.getAllRecords();
-    if (list.isEmpty) {
-      final now = DateTime.now();
-      // Khởi tạo 7 mục lịch sử mẫu ban đầu chuẩn giao diện qr-scanner-interface
-      final initialSeeds = [
-        QrRecord(
-          content: "vercel.com/dashboard",
-          type: "url",
-          timestamp: now.subtract(const Duration(seconds: 15)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "WIFI:T:WPA;S:Coffee_House_5G;P:Coffee@2026;;",
-          type: "wifi",
-          timestamp: now.subtract(const Duration(minutes: 2)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "240.000đ",
-          type: "payment",
-          timestamp: now.subtract(const Duration(minutes: 18)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "Hoài Bo",
-          type: "contact",
-          timestamp: now.subtract(const Duration(days: 1)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "github.com/vercel/next.js",
-          type: "url",
-          timestamp: now.subtract(const Duration(days: 1, hours: 2)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "WIFI:T:WPA;S:Home_Network_2.4G;P:Password123;;",
-          type: "wifi",
-          timestamp: now.subtract(const Duration(days: 2)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "89.000đ",
-          type: "payment",
-          timestamp: now.subtract(const Duration(days: 3)).toIso8601String(),
-        ),
-      ];
+    _scannedRecords = await DatabaseHelper.instance.getAllRecords();
+    _createdRecords = await DatabaseHelper.instance.getAllCreatedRecords();
 
-      for (var seed in initialSeeds) {
-        await DatabaseHelper.instance.addRecord(seed);
-      }
-      list = await DatabaseHelper.instance.getAllRecords();
-    }
-
-    var cCount = await DatabaseHelper.instance.getCreatedCount();
-    if (cCount == 0) {
-      final now = DateTime.now();
-      final createdSeeds = [
-        QrRecord(
-          content: "https://github.com/HubertPhung",
-          type: "url",
-          timestamp: now.subtract(const Duration(hours: 1)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "WIFI:T:WPA;S:Studio_Guest;P:guest2026;;",
-          type: "wifi",
-          timestamp: now.subtract(const Duration(hours: 2)).toIso8601String(),
-        ),
-        QrRecord(
-          content: "Demo Project QR 2026",
-          type: "text",
-          timestamp: now.subtract(const Duration(hours: 3)).toIso8601String(),
-        ),
-      ];
-
-      for (var seed in createdSeeds) {
-        await DatabaseHelper.instance.addCreatedRecord(seed);
-      }
-      cCount = await DatabaseHelper.instance.getCreatedCount();
-    }
-
-    _records = list;
-    _createdCount = cCount;
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<void> deleteItem(int id) async {
-    await DatabaseHelper.instance.deleteRecord(id);
-    _records.removeWhere((r) => r.id == id);
+  Future<void> deleteItem(int id, {bool isCreated = false}) async {
+    if (isCreated) {
+      await DatabaseHelper.instance.deleteCreatedRecord(id);
+      _createdRecords.removeWhere((r) => r.id == id);
+    } else {
+      await DatabaseHelper.instance.deleteRecord(id);
+      _scannedRecords.removeWhere((r) => r.id == id);
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearAllScanned() async {
+    await DatabaseHelper.instance.deleteAll();
+    _scannedRecords.clear();
+    notifyListeners();
+  }
+
+  Future<void> clearAllCreated() async {
+    await DatabaseHelper.instance.deleteAllCreated();
+    _createdRecords.clear();
     notifyListeners();
   }
 
   Future<void> clearAll() async {
     await DatabaseHelper.instance.deleteAll();
-    _records.clear();
+    await DatabaseHelper.instance.deleteAllCreated();
+    _scannedRecords.clear();
+    _createdRecords.clear();
     notifyListeners();
   }
 
   Future<void> addRecord(QrRecord record) async {
     await DatabaseHelper.instance.addRecord(record);
-    _records = await DatabaseHelper.instance.getAllRecords();
+    _scannedRecords = await DatabaseHelper.instance.getAllRecords();
     notifyListeners();
   }
 
   Future<void> addCreatedRecord(QrRecord record) async {
     await DatabaseHelper.instance.addCreatedRecord(record);
-    _createdCount = await DatabaseHelper.instance.getCreatedCount();
+    _createdRecords = await DatabaseHelper.instance.getAllCreatedRecords();
     notifyListeners();
   }
 
   List<QrRecord> getRecent(int limit) {
-    if (_records.length <= limit) return _records;
-    return _records.sublist(0, limit);
+    final all = allRecords;
+    if (all.length <= limit) return all;
+    return all.sublist(0, limit);
   }
 }
